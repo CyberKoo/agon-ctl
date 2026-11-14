@@ -1,0 +1,8 @@
+[package]
+name = "agon-osd-windows-sys"
+description = "Raw Windows, IGCL, ADL and NvAPI ABI types for agon-osd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]

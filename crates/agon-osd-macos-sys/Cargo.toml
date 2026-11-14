@@ -1,0 +1,8 @@
+[package]
+name = "agon-osd-macos-sys"
+description = "Raw macOS framework bindings for agon-osd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]

@@ -1,0 +1,50 @@
+[package]
+name = "agon-ctl"
+description = "Native macOS, Linux and Windows OSD control for AGON displays"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[workspace]
+members = [
+    "crates/agon-osd",
+    "crates/agon-osd-ffi",
+    "crates/agon-osd-linux",
+    "crates/agon-osd-linux-sys",
+    "crates/agon-osd-macos",
+    "crates/agon-osd-macos-sys",
+    "crates/agon-osd-windows",
+    "crates/agon-osd-windows-sys",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+agon-osd = { path = "crates/agon-osd" }
+clap = { version = "4.5", features = ["derive"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+agon-osd-macos = { path = "crates/agon-osd-macos" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+agon-osd-linux = { path = "crates/agon-osd-linux" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+agon-osd-windows = { path = "crates/agon-osd-windows" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+incremental = false
+panic = "abort"
+strip = "symbols"
+
+[profile.ffi]
+inherits = "release"
+panic = "unwind"
+strip = "debuginfo"

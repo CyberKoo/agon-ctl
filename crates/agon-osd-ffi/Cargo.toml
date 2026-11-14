@@ -1,0 +1,21 @@
+[package]
+name = "agon-osd-ffi"
+description = "C ABI for embedding AGON display control in native applications"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+agon-osd = { path = "../agon-osd" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+agon-osd-macos = { path = "../agon-osd-macos" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+agon-osd-linux = { path = "../agon-osd-linux" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+agon-osd-windows = { path = "../agon-osd-windows" }

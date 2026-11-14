@@ -1,0 +1,10 @@
+[package]
+name = "agon-osd-macos"
+description = "Apple Silicon DDC transport for agon-osd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+agon-osd = { path = "../agon-osd" }
+agon-osd-macos-sys = { path = "../agon-osd-macos-sys" }

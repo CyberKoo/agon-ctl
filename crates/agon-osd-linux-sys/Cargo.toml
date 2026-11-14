@@ -1,0 +1,9 @@
+[package]
+name = "agon-osd-linux-sys"
+description = "Raw Linux i2c-dev bindings for agon-osd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"

@@ -1,0 +1,10 @@
+[package]
+name = "agon-osd-linux"
+description = "Linux i2c-dev DDC transport for agon-osd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+agon-osd = { path = "../agon-osd" }
+agon-osd-linux-sys = { path = "../agon-osd-linux-sys" }
