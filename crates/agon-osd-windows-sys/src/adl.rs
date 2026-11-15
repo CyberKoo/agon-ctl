@@ -4,6 +4,7 @@ pub type AdlContextHandle = *mut c_void;
 pub type AdlMainMallocCallback = unsafe extern "system" fn(i32) -> *mut c_void;
 
 pub const ADL_OK: i32 = 0;
+pub const ADL_DISPLAY_DISPLAYINFO_DISPLAYCONNECTED: i32 = 0x0000_0001;
 
 // ADLDisplayID in GPUOpen-LibrariesAndSDKs/display-library/include/adl_structures.h.
 #[repr(C)]

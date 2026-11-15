@@ -11,11 +11,12 @@ pub fn enumerate_with_diagnostics(
     mut diagnostic: impl FnMut(String),
 ) -> Result<Vec<WindowsDisplay>, WindowsError> {
     let mut displays = Vec::new();
+    let mut deferred_diagnostics = Vec::new();
     let mut first_error = None;
     match dxva2::enumerate() {
         Ok(standard) => displays.extend(standard.into_iter().map(WindowsDisplay::from_standard)),
         Err(error) => {
-            diagnostic(format!("dxva2 enumeration failed: {error}"));
+            deferred_diagnostics.push(format!("dxva2 enumeration failed: {error}"));
             first_error = Some(error);
         }
     }
@@ -40,7 +41,7 @@ pub fn enumerate_with_diagnostics(
         match result {
             Ok(raw) => displays.extend(raw.into_iter().map(WindowsDisplay::from_raw)),
             Err(error) => {
-                diagnostic(format!("{provider} enumeration failed: {error}"));
+                deferred_diagnostics.push(format!("{provider} enumeration failed: {error}"));
                 if first_error.is_none() {
                     first_error = Some(error);
                 }
@@ -49,6 +50,9 @@ pub fn enumerate_with_diagnostics(
     }
 
     if displays.is_empty() {
+        for warning in deferred_diagnostics {
+            diagnostic(warning);
+        }
         if let Some(error) = first_error {
             return Err(error);
         }

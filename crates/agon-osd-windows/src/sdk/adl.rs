@@ -2,6 +2,7 @@ use super::{DiscoveredDisplay, RawDisplay};
 use crate::{Library, WindowsError};
 use agon_osd::{DisplayInfo, PacketTransport, TransportError, parse_edid};
 use agon_osd_windows_sys::adl::*;
+use std::collections::HashSet;
 use std::ffi::c_void;
 use std::rc::Rc;
 
@@ -53,6 +54,7 @@ impl AdlProvider {
         let status = unsafe { (self.adapter_count)(self.context, &mut count) };
         check(status, "ADL2_Adapter_NumberOfAdapters_Get")?;
         let mut displays = Vec::new();
+        let mut seen_outputs = HashSet::new();
         for adapter_index in 0..count {
             let mut display_count = 0;
             let mut infos = std::ptr::null_mut();
@@ -89,6 +91,9 @@ impl AdlProvider {
             // SAFETY: ADL returned an array containing `display_count` entries.
             let infos_slice = unsafe { std::slice::from_raw_parts(infos, display_count as usize) };
             for info in infos_slice {
+                if !is_connected(info) {
+                    continue;
+                }
                 // ADL EDID/DDC calls take the logical display index, not the
                 // physical index or either adapter field in ADLDisplayID.
                 let display_index = info.display_id.display_logical_index;
@@ -123,6 +128,11 @@ impl AdlProvider {
                     ));
                     continue;
                 };
+                // Logical adapters can expose aliases of one physical output. Only
+                // deduplicate that explicit ADL identity, never equal EDID alone.
+                if physical_output(info).is_some_and(|output| !seen_outputs.insert(output)) {
+                    continue;
+                }
                 let mut key = [0; 128];
                 key.copy_from_slice(&bytes[..128]);
                 let location = format!("adl:{adapter_index}:{display_index}");
@@ -244,6 +254,17 @@ fn check(status: i32, operation: &'static str) -> Result<(), WindowsError> {
     }
 }
 
+fn is_connected(info: &AdlDisplayInfo) -> bool {
+    let flag = ADL_DISPLAY_DISPLAYINFO_DISPLAYCONNECTED;
+    info.display_info_mask & flag != 0 && info.display_info_value & flag != 0
+}
+
+fn physical_output(info: &AdlDisplayInfo) -> Option<(i32, i32)> {
+    let id = info.display_id;
+    (id.display_physical_adapter_index >= 0 && id.display_physical_index >= 0)
+        .then_some((id.display_physical_adapter_index, id.display_physical_index))
+}
+
 fn display_name(info: &AdlDisplayInfo) -> String {
     let length = info
         .display_name
@@ -267,7 +288,7 @@ mod tests {
     }
     unsafe extern "system" fn adapters(_: AdlContextHandle, count: *mut i32) -> i32 {
         // SAFETY: the caller supplies a writable count.
-        unsafe { *count = 3 };
+        unsafe { *count = 4 };
         ADL_OK
     }
 
@@ -279,7 +300,7 @@ mod tests {
         _: i32,
     ) -> i32 {
         let indices: &[i32] = if adapter == 0 {
-            &[11, 12, 13, 14, 15]
+            &[11, 12, 13, 14, 15, 17, 20, 21]
         } else {
             &[16]
         };
@@ -296,12 +317,23 @@ mod tests {
                 data.add(index).write(AdlDisplayInfo {
                     display_id: AdlDisplayId {
                         display_logical_index: *logical,
-                        display_physical_index: 22,
+                        // Output 17 is a failing alias of physical output 16.
+                        display_physical_index: if *logical == 17 { 16 } else { *logical },
                         display_logical_adapter_index: 33,
                         display_physical_adapter_index: 44,
                     },
                     // A driver-supplied name must not rescue an invalid EDID identity.
                     display_name: [b'X' as _; 256],
+                    display_info_mask: if *logical == 21 {
+                        0
+                    } else {
+                        ADL_DISPLAY_DISPLAYINFO_DISPLAYCONNECTED
+                    },
+                    display_info_value: if *logical == 20 {
+                        0
+                    } else {
+                        ADL_DISPLAY_DISPLAYINFO_DISPLAYCONNECTED
+                    },
                     ..Default::default()
                 });
             }
@@ -316,7 +348,7 @@ mod tests {
         display: i32,
         data: *mut AdlDisplayEdidData,
     ) -> i32 {
-        if !matches!((adapter, display), (0, 11..=15) | (2, 16)) || display == 12 {
+        if !matches!((adapter, display), (0, 11..=17) | (2..=3, 16)) || matches!(display, 12 | 17) {
             return -2;
         }
         // SAFETY: the caller supplies a writable EDID structure.
@@ -399,7 +431,7 @@ mod tests {
     }
 
     #[test]
-    fn enumeration_and_transport_use_logical_index_and_keep_partial_results() {
+    fn enumeration_filters_disconnected_and_alias_outputs_and_keeps_partial_results() {
         let provider = Rc::new(AdlProvider {
             _library: library(),
             context: std::ptr::null_mut(),
@@ -409,8 +441,21 @@ mod tests {
             get_edid,
             ddc_access: ddc,
         });
-        let mut displays = provider.enumerate(&mut |_| {}).unwrap();
+        let mut diagnostics = Vec::new();
+        let mut displays = provider
+            .enumerate(&mut |warning| diagnostics.push(warning))
+            .unwrap();
         assert_eq!(displays.len(), 3);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|warning| warning.contains("adapter 0 output 17"))
+        );
+        assert!(
+            !diagnostics
+                .iter()
+                .any(|warning| { warning.contains("output 20") || warning.contains("output 21") })
+        );
         let mut indices = Vec::new();
         for display in &mut displays {
             assert_eq!(display.edid, edid());
