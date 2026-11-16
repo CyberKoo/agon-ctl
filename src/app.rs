@@ -132,7 +132,7 @@ impl fmt::Display for AppError {
         match self {
             Self::Platform(error) => error.fmt(formatter),
             Self::Osd(error) => error.fmt(formatter),
-            Self::NoDisplays => formatter.write_str("no DDC-capable external displays found"),
+            Self::NoDisplays => formatter.write_str("no supported AOC external displays found"),
             Self::DisplayNotFound(selector) => {
                 write!(formatter, "display not found: {selector}")
             }

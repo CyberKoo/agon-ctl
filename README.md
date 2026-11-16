@@ -84,8 +84,8 @@ cargo build --release --target aarch64-unknown-linux-gnu --bin agon-ctl
 
 - 内核已加载 `i2c-dev`。
 - 当前用户拥有目标 `/dev/i2c-*` 设备的读写权限。
-- DRM 中显示为 `connected` 且存在 DDC 通道的连接器。
-- 默认排除 eDP、LVDS、DSI 内置面板，单个连接器异常时告警并跳过。
+- 枚举直接探测 `/dev/i2c-*` 上的 AOC 协议响应，不依赖 DRM 的 `<connector>/ddc` 节点。
+- DRM 连接器仅用于可选命名；关联失败时仍列出探测成功的 `i2c-N` 设备。
 
 ### Windows
 

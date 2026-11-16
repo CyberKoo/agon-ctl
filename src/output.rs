@@ -3,7 +3,7 @@ use agon_osd::{Feature, ValueDomain, VcpValue};
 
 pub(crate) fn displays(displays: &[NativeDisplay]) {
     if displays.is_empty() {
-        println!("No DDC-capable external displays found.");
+        println!("No supported AOC external displays found.");
         return;
     }
     for display in displays {
